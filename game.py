@@ -80,7 +80,7 @@ class Agent:
     def draw(self):
         pygame.draw.circle(screen,"white",  self.position, 20, width=2) #for silly white outline to make the agent cooller idk
         pygame.draw.circle(screen,"red", self.position, 10)
-        pygame.draw.circle(screen,"grey",  self.position, 150, width=2) #invisible circle for detection range
+        #pygame.draw.circle(screen,"grey",  self.position, 150, width=2) #invisible circle for detection range
 
 agents = []
 for i in range(100):
