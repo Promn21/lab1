@@ -1,9 +1,16 @@
 # Example file showing a basic pygame "game loop"
 import pygame
 import random
+import math
+
 WIDTH=1280
 HEIGHT=720
-MAX_SPEED = 8
+MAX_SPEED = 5
+
+COHERENCE_FACTOR = 0.1
+ALIGNMENT_FACTOR = 0.1
+SEPARATION_FACTOR = 0.05
+SEPARATION_DIST = 30
 
 class Agent:
     def __init__(self, x, y) -> None:
@@ -25,25 +32,55 @@ class Agent:
 
     def seek(self, x,y):
         dir = player - self.position #seeking direction
-        dir= dir.normalize() * 0.2
+        dir = dir.normalize() * 0.2
         seeking_force = dir
         self.apply_force(seeking_force.x, seeking_force.y)
 
-   # def coherence(self, agents):
-    #    center_of_mass = pygame.Vector2(0, 0)
+    def coherence(self, agents):
+        center_of_mass = pygame.Vector2(0, 0)
+        agent_in_range_count = 0
         
-     #   for agent in agents:
-      #      if agent != self:
-       #         center_of_mass += agent.position
-        #center_of_mass /= len(agents) - 1 
+        for agent in agents:
+            if agent != self:
+                dist = math.sqrt((self.position.x - agent.position.x)**2 
+                        + (self.position.y - agent.position.y)**2)
+                if dist < 200:
+                    center_of_mass += agent.position
+                    agent_in_range_count += 1
+        
+        if agent_in_range_count > 0:
+            center_of_mass /= agent_in_range_count 
 
-        #dir = center_of_mass - self.position
-        #f = dir.normalize() *0.1
-        #self.apply_force(f.x, f.y) 
+
+        dir = center_of_mass - self.position
+        force = dir.normalize() * COHERENCE_FACTOR
+        self.apply_force(force.x, force.y) 
+    
+    def separation(self, agents):
+        dir = pygame.Vector2(0,0)
+        for agent in agents:
+            dist = math.sqrt((self.position.x - agent.position.x)**2 
+                        + (self.position.y - agent.position.y)**2)
+            if dist < SEPARATION_DIST:
+                dir += self.position - agent.position
+            
+        separation_force = dir * SEPARATION_FACTOR
+        self.apply_force(separation_force.x, separation_force.y)    
+
+    def alignment(self, agents):
+        v = pygame.Vector2(0,0)
+        for agent in agents:
+            if agent != self:
+                v += agent.velocity
+
+        v /= len(agents) - 1
+        alignment_force = v * ALIGNMENT_FACTOR
+        self.apply_force(alignment_force.x, alignment_force.y)
 
     def draw(self):
         pygame.draw.circle(screen,"white",  self.position, 20, width=2) #for silly white outline to make the agent cooller idk
         pygame.draw.circle(screen,"red", self.position, 10)
+        pygame.draw.circle(screen,"grey",  self.position, 150, width=2) #invisible circle for detection range
 
 agents = []
 for i in range(100):
@@ -99,11 +136,23 @@ while running:
     pygame.draw.circle(screen,("black"), (player.x, player.y), radius) 
     
     for agent in agents:
-            agent.seek(400,400)
-            #agent.coherence(agents)
+            agent.seek(400,400) # "#" this to make below function work!
+            agent.coherence(agents)
+            agent.separation(agents)
+            agent.alignment(agents)
             agent.update()
             agent.draw()
-
+    
+    for agent in agents:
+        if agent.position.x > WIDTH + 1:
+                agent.position.x =1
+        elif agent.position.x < 0:
+            agent.position.x = WIDTH
+        if agent.position.y > HEIGHT + 1:
+                agent.position.y =1
+        elif agent.position.y < 0:
+            agent.position.y = HEIGHT
+ 
  
     pygame.display.update()
 
