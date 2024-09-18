@@ -88,7 +88,7 @@ for i in range(100):
 
 # ----- pygame setup ------
 pygame.init()
-screen = pygame.display.set_mode((1280, 720))
+screen = pygame.display.set_mode((1920, 1080))
 pygame.display.set_caption("Homework")
 clock = pygame.time.Clock()
 
@@ -97,8 +97,6 @@ clock = pygame.time.Clock()
 player = pygame.Vector2()
 x = 50
 y = 50
-#width = 40
-#height = 60
 radius = 10
 velocity = 5
 
@@ -132,7 +130,6 @@ while running:
     screen.fill("grey")
 
     # RENDER YOUR GAME HERE
-    ###pygame.draw.circle(screen, "black", [640,360], 15)
     pygame.draw.circle(screen,("black"), (player.x, player.y), radius) 
     
     for agent in agents:
