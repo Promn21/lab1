@@ -3,8 +3,8 @@ import pygame
 import random
 import math
 
-WIDTH=1280
-HEIGHT=720
+WIDTH=1920
+HEIGHT=1080
 MAX_SPEED = 5
 
 COHERENCE_FACTOR = 0.1
