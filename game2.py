@@ -5,7 +5,7 @@ import random
 WIDTH = 1280
 HEIGHT = 720
 MAX_SPEED = 5
-NUMBER_AGENT = 100  # Number of agents (fish) in the simulation
+MAX_AGENT = 100  # Number of agents (fish) in the simulation
 FOOD_RADIUS = 50  # Radius within which fish will detect food
 HUNGER_THRESHOLD = 60  # Hunger level at which fish will seek food
 FOOD_DROP_INTERVAL = 30  # Interval for dropping food (frames)
@@ -177,7 +177,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 36)
 
-agents = [Agent(random.uniform(0, WIDTH), random.uniform(0, HEIGHT)) for _ in range(NUMBER_AGENT)]
+agents = [Agent(random.uniform(0, WIDTH), random.uniform(0, HEIGHT)) for _ in range(MAX_AGENT)]
 foods = []
 food_timer = 0
 
