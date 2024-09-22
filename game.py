@@ -1,40 +1,53 @@
-# Example file showing a basic pygame "game loop"
 import pygame
 import random
 import math
+import time
 
-WIDTH=1280
-HEIGHT=720
+WIDTH = 1920
+HEIGHT = 1080
 MAX_SPEED = 5
+MAX_AGENTS = 95
+SPAWN_INTERVAL = 0.5  # Time in seconds between spawns
 
-COHERENCE_FACTOR = 0.1
-ALIGNMENT_FACTOR = 0.1
-SEPARATION_FACTOR = 0.05
-SEPARATION_DIST = 30
+COHERENCE_FACTOR = 0.05
+ALIGNMENT_FACTOR = 0.05
+SEPARATION_FACTOR = 1
+SEPARATION_DIST = 100
 
 class Agent:
     def __init__(self, x, y) -> None:
-       self.position = pygame.Vector2(x,y)
-       self.velocity = pygame.Vector2(0,0)
-       self.acceleration = pygame.Vector2(0,0)
-       self.mass = 1
+        self.position = pygame.Vector2(x, y)
+        self.velocity = pygame.Vector2(0, 0)
+        self.acceleration = pygame.Vector2(0, 0)
+        self.mass = 1
+        self.max_force = 0.2  # Maximum steering force
 
     def update(self):
-        self.velocity = self.velocity + self.acceleration
+        self.velocity += self.acceleration
         if self.velocity.length() > MAX_SPEED:
             self.velocity = self.velocity.normalize() * MAX_SPEED
-        self.position = self.position + self.velocity
-        self.acceleration = pygame.Vector2(0,0)
+        self.position += self.velocity
+        self.acceleration = pygame.Vector2(0, 0)
 
-    def apply_force(self, x,y):
-        force = pygame.Vector2(x,y)
-        self.acceleration = self.acceleration + (force/self.mass)
+    def apply_force(self, x, y):
+        force = pygame.Vector2(x, y)
+        if force.length() > self.max_force:
+            force = force.normalize() * self.max_force
+        self.acceleration += (force / self.mass)
 
-    def seek(self, x,y):
-        dir = player - self.position #seeking direction
-        dir = dir.normalize() * 0.2
-        seeking_force = dir
-        self.apply_force(seeking_force.x, seeking_force.y)
+    def seek(self, x, y):
+        dir = pygame.Vector2(x, y) - self.position
+        distance = dir.length()
+        
+        if distance > 500:
+            speed_factor = 0.2
+        elif distance > 300:
+            speed_factor = 0.8
+        else:
+            speed_factor = 0.3
+
+        steering_force = dir.normalize() * speed_factor
+        self.apply_force(steering_force.x, steering_force.y)
 
     def coherence(self, agents):
         center_of_mass = pygame.Vector2(0, 0)
@@ -51,13 +64,12 @@ class Agent:
         if agent_in_range_count > 0:
             center_of_mass /= agent_in_range_count 
 
-
         dir = center_of_mass - self.position
         force = dir.normalize() * COHERENCE_FACTOR
         self.apply_force(force.x, force.y) 
     
     def separation(self, agents):
-        dir = pygame.Vector2(0,0)
+        dir = pygame.Vector2(0, 0)
         for agent in agents:
             dist = math.sqrt((self.position.x - agent.position.x)**2 
                         + (self.position.y - agent.position.y)**2)
@@ -68,97 +80,99 @@ class Agent:
         self.apply_force(separation_force.x, separation_force.y)    
 
     def alignment(self, agents):
-        v = pygame.Vector2(0,0)
-        for agent in agents:
-            if agent != self:
-                v += agent.velocity
+        v = pygame.Vector2(0, 0)
+        num_agents = len(agents) - 1  # Exclude self
 
-        v /= len(agents) - 1
-        alignment_force = v * ALIGNMENT_FACTOR
-        self.apply_force(alignment_force.x, alignment_force.y)
+        if num_agents > 0:  # Ensure there are other agents to align with
+            for agent in agents:
+                if agent != self:
+                    v += agent.velocity
+            
+            v /= num_agents
+            alignment_force = v * ALIGNMENT_FACTOR
+            self.apply_force(alignment_force.x, alignment_force.y)
 
     def draw(self):
-        pygame.draw.circle(screen,"white",  self.position, 20, width=2) #for silly white outline to make the agent cooller idk
-        pygame.draw.circle(screen,"red", self.position, 10)
-        #pygame.draw.circle(screen,"grey",  self.position, 150, width=2) #invisible circle for detection range
+        pygame.draw.circle(screen, "white", self.position, 50, width=2)
+        pygame.draw.circle(screen, "red", self.position, 25)
 
-agents = []
-for i in range(100):
-    agents.append(Agent(random.uniform(0, WIDTH), random.uniform(0, HEIGHT)))
+def spawn_far_from_player(player, min_distance, max_distance):
+    angle = random.uniform(0, 2 * math.pi)  # Random direction
+    distance = random.uniform(min_distance, max_distance)  # Random distance in a given range
+    x = player.x + distance * math.cos(angle)
+    y = player.y + distance * math.sin(angle)
+
+    if x < -50: x = -50
+    if x > WIDTH + 50: x = WIDTH + 50
+    if y < -50: y = -50
+    if y > HEIGHT + 50: y = HEIGHT + 50
+
+    return Agent(x, y)
 
 # ----- pygame setup ------
 pygame.init()
-screen = pygame.display.set_mode((1280, 720))
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Homework")
 clock = pygame.time.Clock()
 
-
-#----- player editors -----
-player = pygame.Vector2()
-x = 50
-y = 50
-#width = 40
-#height = 60
-radius = 10
+#----- player setup -----
+player = pygame.Vector2(960, 540)
+player_radius = 10
 velocity = 5
+
+# Initialize target position as player position
+target_position = pygame.Vector2(player.x, player.y)
+move_speed = 60  # Movement speed
+stop_threshold = 60  # Distance threshold to stop movement
+
+# Initialize agents
+agents = []
+
+# Track time for spawning
+last_spawn_time = time.time()
 
 running = True
 
 while running:
-    # poll for events
-    # pygame.QUIT event means the user clicked X to close your window
+    current_time = time.time()
+    
+    screen.fill("grey")
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-   
-    #WASD for movement controls
-    keys = pygame.key.get_pressed()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            target_position = pygame.Vector2(event.pos)
+        
+    pygame.draw.circle(screen, "black", (int(player.x), int(player.y)), player_radius)
 
-    if keys[pygame.K_a]:
-        player.x -= velocity
-    
-    if keys[pygame.K_d]:
-        player.x += velocity
-    
-    if keys[pygame.K_w]:
-        player.y -= velocity
-   
-    if keys[pygame.K_s]:
-        player.y += velocity
-    
-    
+    # Check if it's time to spawn a new agent
+    if current_time - last_spawn_time >= SPAWN_INTERVAL and len(agents) < MAX_AGENTS:
+        new_agent = spawn_far_from_player(player, min_distance=1500, max_distance=1920)
+        agents.append(new_agent)
+        last_spawn_time = current_time
 
-    # fill the screen with a color to wipe away anything from last frame
-    screen.fill("grey")
+    # Move player towards target position
+    direction = target_position - player
+    if direction.length() > stop_threshold:  # Only move if beyond the stop threshold
+        direction = direction.normalize() * move_speed
+        player += direction
 
-    # RENDER YOUR GAME HERE
-    ###pygame.draw.circle(screen, "black", [640,360], 15)
-    pygame.draw.circle(screen,("black"), (player.x, player.y), radius) 
+    
+    
+    
     
     for agent in agents:
-            agent.seek(400,400) # "#" this to make below function work!
-            agent.coherence(agents)
-            agent.separation(agents)
-            agent.alignment(agents)
-            agent.update()
-            agent.draw()
+        agent.seek(player.x, player.y)
+        agent.coherence(agents)
+        agent.separation(agents)
+        agent.alignment(agents)
+        agent.update()
+        agent.draw()
     
-    for agent in agents:
-        if agent.position.x > WIDTH + 1:
-                agent.position.x =1
-        elif agent.position.x < 0:
-            agent.position.x = WIDTH
-        if agent.position.y > HEIGHT + 1:
-                agent.position.y =1
-        elif agent.position.y < 0:
-            agent.position.y = HEIGHT
- 
- 
     pygame.display.update()
-
-    # flip() the display to put your work on screen
     pygame.display.flip()
 
-    clock.tick(60)  # limits FPS to 60
+    clock.tick(60)
 
 pygame.quit()

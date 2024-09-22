@@ -1,0 +1,30 @@
+Channels:
+ - defaults
+Platform: win-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... done
+
+## Package Plan ##
+
+  environment location: C:\Users\WIN\anaconda3\envs\=3.12.5.final.0
+
+
+
+Proceed ([y]/n)? Invalid choice: channels:
+Proceed ([y]/n)? Invalid choice: - defaults
+Proceed ([y]/n)? Invalid choice: platform: win-64
+Proceed ([y]/n)? Invalid choice: collecting package metadata (repodata.json): ...working... done
+Proceed ([y]/n)? Invalid choice: solving environment: ...working... done
+Proceed ([y]/n)? 
+Preparing transaction: ...working... done
+Verifying transaction: ...working... done
+Executing transaction: ...working... done
+#
+# To activate this environment, use
+#
+#     $ conda activate =3.12.5.final.0
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+
