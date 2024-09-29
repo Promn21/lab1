@@ -215,12 +215,6 @@ class Human(Agent):
             pygame.image.load('Assets/eldersspritesheet_4.png').convert_alpha() ]
         
         self.currentSheet = random.choice(self.spriteSheets)
-        self.frameIndex = 0
-        self.frameCount = 6  
-        self.spriteWidth = self.currentSheet.get_width() // self.frameCount  
-        self.spriteHeight = self.currentSheet.get_height()  
-        self.animationSpeed = 0.2  
-        self.animationTimer = 0.0
 
         self.MIN_SPEED = -1   
         self.MAX_SPEED = 5
@@ -247,9 +241,6 @@ class Human(Agent):
         self.acceleration = pygame.Vector2(0, 0)
 
         self.avoidObstacles(obstacles)
-
-        wallForce = self.wallBounce(WIDTH, HEIGHT)
-        self.applyForce(wallForce[0], wallForce[1])
 
         self.animationTimer += self.animationSpeed
         if self.animationTimer >= 1.0:  
