@@ -61,7 +61,7 @@ class Agent:
         self.frameCount = 6  # f
         self.spriteWidth = self.currentSheet.get_width() // self.frameCount  
         self.spriteHeight = self.currentSheet.get_height()  
-        self.animationSpeed = 0.1  
+        self.animationSpeed = 0.2  
         self.animationTimer = 0.0
 
     def update(self):
@@ -219,7 +219,7 @@ class Human(Agent):
         self.frameCount = 6  
         self.spriteWidth = self.currentSheet.get_width() // self.frameCount  
         self.spriteHeight = self.currentSheet.get_height()  
-        self.animationSpeed = 0.1  
+        self.animationSpeed = 0.2  
         self.animationTimer = 0.0
 
         self.MIN_SPEED = -1   
