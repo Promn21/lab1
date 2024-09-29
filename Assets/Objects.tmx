@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="48" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="928">
- <tileset firstgid="1" source="D:/D-ownloads/Coding/Resident Evil Game/Tilemap/tileset_colored.tsx"/>
- <tileset firstgid="1025" source="D:/D-ownloads/Coding/Resident Evil Game/Tilemap/colored-transparent_packed.tsx"/>
+ <editorsettings>
+  <export target="Objects.tmx" format="tmx"/>
+ </editorsettings>
+ <tileset firstgid="1" source="Sprite and Map/Tilemap/tileset_colored.tsx"/>
+ <tileset firstgid="1025" source="Sprite and Map/Tilemap/monochrome-transparent_packed.tsx"/>
  <layer id="1" name="Tile Layer 1" width="48" height="48">
   <data encoding="csv">
 588,588,588,588,588,588,588,588,588,588,588,588,588,588,588,36,69,34,35,588,588,588,588,588,588,588,588,588,588,588,588,588,588,588,137,69,33,588,588,588,588,588,588,588,588,588,588,588,
@@ -106,7 +109,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="2" name="Obstacle">
+ <objectgroup id="2" name="Obstacle" visible="0">
   <object id="9" name="Obstacle" x="256.676" y="449.011" width="46.3333" height="126.125"/>
   <object id="10" name="Obstacle" x="352.887" y="480.469" width="46.7273" height="94"/>
   <object id="12" name="Obstacle" x="431.676" y="496.802" width="79.3333" height="78"/>

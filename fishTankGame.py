@@ -3,8 +3,6 @@ import random
 import math
 import pytmx
 
-
-# Screen dimensions
 WIDTH = 1037
 HEIGHT = 1037
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -16,7 +14,7 @@ MAX_HUMAN = 100
 
 HUNGER_THRESHOLD = 60
 HUNGER_MAX = 100
-EAT_DISTANCE = 25  # Distance at which agents can transform humans
+EAT_DISTANCE = 25  
 
 COHERENCE_FACTOR = 0.01
 ALIGNMENT_FACTOR = 0.1
@@ -27,24 +25,17 @@ SEPARATION_DIST = 35
 ZONE_OF_WALL = 5
 WALL_CONST = 4
 
-# Load the map and collision images
-map_image = pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/Sprite and Map/Tilemap/resident.png').convert()
-# Define a scale factor
-MAP_SCALE = 1  # Adjust this value to scale your map (0.5 = 50% size)
-OBJECT_SCALE = MAP_SCALE * 1.355  # Adjust for objects being half the size
+mapImage = pygame.image.load('Assets/Sprite and Map/Tilemap/resident.png').convert()
+MAP_SCALE = 1  
+OBJECT_SCALE = MAP_SCALE * 1.355 
 
-# Load the TMX file for obstacles
-tmx_data = pytmx.load_pygame('C:/Users/WIN/Documents/GitHub/lab1/Assets/Objects.tmx')  # Replace with your TMX file path
+tmxData = pytmx.load_pygame('Assets/Objects.tmx')
 obstacles = []
 
-
-
-# Extract the object layer and create rectangles for obstacles
-for obj in tmx_data.objects:
-    if obj.name == "Obstacle":  # Adjust based on your TMX object names
-        # Apply scaling to position and size
+for obj in tmxData.objects:
+    if obj.name == "Obstacle":  
         scaled_rect = pygame.Rect(obj.x * OBJECT_SCALE, obj.y * OBJECT_SCALE, obj.width * OBJECT_SCALE, obj.height * OBJECT_SCALE)
-        obstacles.append(scaled_rect)
+        obstacles.append(scaled_rect)  # apply scaling to position and size
 
 class Agent:
     def __init__(self, x, y):
@@ -55,22 +46,22 @@ class Agent:
         self.mass = 1
         
         # Hunger
-        self.hunger = random.randint(1, HUNGER_MAX)  # Agents spawn with random hunger value
+        self.hunger = random.randint(1, HUNGER_MAX)  # ag spawn with random hunger number
         self.hungerIncreaseRate = 0.1
-        self.targetHuman = None  # Agent's target human
+        self.targetHuman = None  
 
         self.spriteSheets = [
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/ghostsspritesheet_1.png').convert_alpha(),
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/ghostsspritesheet_2.png').convert_alpha(),
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/ghostsspritesheet_3.png').convert_alpha(),
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/ghostsspritesheet_4.png').convert_alpha() ]
+            pygame.image.load('Assets/ghostsspritesheet_1.png').convert_alpha(),
+            pygame.image.load('Assets/ghostsspritesheet_2.png').convert_alpha(),
+            pygame.image.load('Assets/ghostsspritesheet_3.png').convert_alpha(),
+            pygame.image.load('Assets/ghostsspritesheet_4.png').convert_alpha() ]
         
         self.currentSheet = random.choice(self.spriteSheets)
         self.frameIndex = 0
-        self.frameCount = 6  # Total frames
-        self.spriteWidth = self.currentSheet.get_width() // self.frameCount   # Calculate sprite width
-        self.spriteHeight = self.currentSheet.get_height()  # Assuming all sprites have the same height
-        self.animationSpeed = 0.1  # Adjust this value for speed of animation
+        self.frameCount = 6  # f
+        self.spriteWidth = self.currentSheet.get_width() // self.frameCount  
+        self.spriteHeight = self.currentSheet.get_height()  
+        self.animationSpeed = 0.1  
         self.animationTimer = 0.0
 
     def update(self):
@@ -80,12 +71,11 @@ class Agent:
         self.position += self.velocity
         self.acceleration = pygame.Vector2(0, 0)
 
-        # Wall bounce
         wallForce = self.wallBounce(WIDTH, HEIGHT)
         self.applyForce(wallForce[0], wallForce[1])
 
         self.animationTimer += self.animationSpeed
-        if self.animationTimer >= 1.0:  # Update every second
+        if self.animationTimer >= 1.0:  # uppdate every second
             self.frameIndex = (self.frameIndex + 1) % self.frameCount
             self.animationTimer = 0.0
 
@@ -103,9 +93,9 @@ class Agent:
         if self.hunger > HUNGER_THRESHOLD and humans:
             self.findNearestHuman(humans)
             if self.targetHuman:
-                self.seek(self.targetHuman.position)  # Seek human position
+                self.seek(self.targetHuman.position)  # seek human position
                 if self.position.distance_to(self.targetHuman.position) < EAT_DISTANCE:
-                    self.transformHuman(humans)  # Transform human into agent
+                    self.transformHuman(humans)  # transform human into agent
                     self.targetHuman = None
             else:
                 self.coherence(agents)
@@ -131,9 +121,7 @@ class Agent:
             self.hunger = max(0, self.hunger - 100)
 
         new_agent = Agent(self.targetHuman.position.x, self.targetHuman.position.y)
-        # Add the new agent to the agents list
-        agents.append(new_agent)
-        # Remove the human from the simulation
+        agents.append(new_agent) # add new agent to the agents list and remove human one
         humans.remove(self.targetHuman)
 
     def seek(self, targetPosition):
@@ -148,69 +136,62 @@ class Agent:
         for agent in agents:
             if agent != self:
                 dist = self.position.distance_to(agent.position)
-                if dist < 100:  # Only consider nearby agents within 100 units
+                if dist < 100:  
                     centerOfMass += agent.position
                     agentInRangeCount += 1
 
         if agentInRangeCount > 0:
-            centerOfMass /= agentInRangeCount  # Calculate average position
+            centerOfMass /= agentInRangeCount 
             dir = centerOfMass - self.position
             f = dir * COHERENCE_FACTOR 
-            self.applyForce(f.x, f.y)  # Apply coherence force
+            self.applyForce(f.x, f.y)  
 
     def separation(self, agents):
-        # Steer to avoid crowding neighbors (separation behavior)
         dir = pygame.Vector2(0, 0)
         for agent in agents:
             if agent != self:
                 dist = self.position.distance_to(agent.position)
-                if dist < SEPARATION_DIST:  # Only consider agents within separation distance
+                if dist < SEPARATION_DIST:  
                     dir += self.position - agent.position
             
         separationForce = dir * SEPARATION_FACTOR
         self.applyForce(separationForce.x, separationForce.y)
 
     def alignment(self, agents):
-        # Steer towards the average heading (velocity) of nearby agents (alignment behavior)
         velo = pygame.Vector2(0, 0)
         agentInRangeCount = 0
         for agent in agents:
             if agent != self:
                 dist = self.position.distance_to(agent.position)
-                if dist < 100:  # Only consider nearby agents within 100 units
+                if dist < 100:  
                     velo += agent.velocity
                     agentInRangeCount += 1
 
         if agentInRangeCount > 0:
-            velo /= agentInRangeCount  # Calculate average velocity
-            alignmentForce = velo * ALIGNMENT_FACTOR  # Apply alignment force
+            velo /= agentInRangeCount 
+            alignmentForce = velo * ALIGNMENT_FACTOR  
             self.applyForce(alignmentForce.x, alignmentForce.y)
 
     def draw(self, screen):
-        spriteHeight = self.currentSheet.get_height()  # Assuming all sprites have the same height
+        spriteHeight = self.currentSheet.get_height() 
         frameRect = pygame.Rect(self.frameIndex * self.spriteWidth, 0, self.spriteWidth, spriteHeight)
-
-        # Define the desired scale factor
-        scaleFactor = 2  # Change this to increase or decrease the size
-
-        # Scale the sprite before drawing
+        scaleFactor = 2  
         scaledSprite = pygame.transform.scale(self.currentSheet.subsurface(frameRect), 
                                                 (int(self.spriteWidth * scaleFactor), int(spriteHeight * scaleFactor)))
         
+        #Hunger Ui
         circle_color = "purple" if self.hunger > HUNGER_THRESHOLD else "yellow"
         pygame.draw.circle(screen, circle_color, (int(self.position.x), int(self.position.y)), 20, width=2)
 
-        # Draw the scaled sprite
         screen.blit(scaledSprite, (self.position.x - (self.spriteWidth * scaleFactor) // 2, 
-                                    self.position.y - (spriteHeight * scaleFactor) // 2))
+                                    self.position.y - (spriteHeight * scaleFactor) // 2))  
         
 
     def avoidObstacles(self, obstacles):
         for obstacle in obstacles:
             if obstacle.collidepoint(self.position):
-                # Reflect the velocity when colliding with an obstacle
-                self.velocity = -self.velocity  # Reverse the direction of the velocity
-                self.position += self.velocity  # Move the agent slightly in the opposite direction
+                self.velocity = -self.velocity 
+                self.position += self.velocity  
 
     def wallBounce(self, WIDTH, HEIGHT):
         wallX, wallY = 0, 0
@@ -228,19 +209,19 @@ class Human(Agent):
     def __init__(self, x, y):
         super().__init__(x, y)
         self.spriteSheets = [
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/eldersspritesheet_1.png').convert_alpha(),
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/eldersspritesheet_2.png').convert_alpha(),
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/eldersspritesheet_3.png').convert_alpha(),
-            pygame.image.load('C:/Users/WIN/Documents/GitHub/lab1/Assets/eldersspritesheet_4.png').convert_alpha() ]
+            pygame.image.load('Assets/eldersspritesheet_1.png').convert_alpha(),
+            pygame.image.load('Assets/eldersspritesheet_2.png').convert_alpha(),
+            pygame.image.load('Assets/eldersspritesheet_3.png').convert_alpha(),
+            pygame.image.load('Assets/eldersspritesheet_4.png').convert_alpha() ]
         
        
 
         self.currentSheet = random.choice(self.spriteSheets)
         self.frameIndex = 0
-        self.frameCount = 6  # Total frames
-        self.spriteWidth = self.currentSheet.get_width() // self.frameCount   # Calculate sprite width
-        self.spriteHeight = self.currentSheet.get_height()  # Assuming all sprites have the same height
-        self.animationSpeed = 0.1  # Adjust this value for speed of animation
+        self.frameCount = 6  
+        self.spriteWidth = self.currentSheet.get_width() // self.frameCount  
+        self.spriteHeight = self.currentSheet.get_height()  
+        self.animationSpeed = 0.1  
         self.animationTimer = 0.0
 
 
@@ -249,39 +230,32 @@ class Human(Agent):
 
     def update(self, obstacles):
         
-        # Make the human run away from the nearest agent
         nearestAgent = self.findNearestAgent(agents)
-
         if nearestAgent:
             dist = self.position.distance_to(nearestAgent.position)
-            if dist < 300:  # If within 100 pixels, use normal speed
+            if dist < 300:  
                 speed = self.MAX_SPEED
-            else:  # Otherwise, use slow speed
+            else:  
                 speed = self.MIN_SPEED
             
-            self.flee(nearestAgent.position)  # Make the human run away from the nearest agent
-
-            # Update position, velocity, and wall bouncing like normal
+            self.flee(nearestAgent.position) 
             self.velocity += self.acceleration
             if self.velocity.length() > MAX_SPEED:
                 self.velocity = self.velocity.normalize() * MAX_SPEED
         
-        # Update position, velocity, and wall bouncing like normal
         self.velocity += self.acceleration
         if self.velocity.length() > MAX_SPEED:
             self.velocity = self.velocity.normalize() * MAX_SPEED
         self.position += self.velocity
         self.acceleration = pygame.Vector2(0, 0)
 
-        # Apply obstacle avoidance logic
         self.avoidObstacles(obstacles)
 
-        # Apply wall bounce logic
         wallForce = self.wallBounce(WIDTH, HEIGHT)
         self.applyForce(wallForce[0], wallForce[1])
 
         self.animationTimer += self.animationSpeed
-        if self.animationTimer >= 1.0:  # Update every second
+        if self.animationTimer >= 1.0:  
             self.frameIndex = (self.frameIndex + 1) % self.frameCount
             self.animationTimer = 0.0
 
@@ -306,15 +280,10 @@ class Human(Agent):
     def draw(self, screen):
         spriteHeight = self.currentSheet.get_height()  # Assuming all sprites have the same height
         frameRect = pygame.Rect(self.frameIndex * self.spriteWidth, 0, self.spriteWidth, spriteHeight)
-
-        # Define the desired scale factor
-        scaleFactor = 2  # Change this to increase or decrease the size
-
-        # Scale the sprite before drawing
+        scaleFactor = 2  
         scaledSprite = pygame.transform.scale(self.currentSheet.subsurface(frameRect), 
                                                 (int(self.spriteWidth * scaleFactor), int(spriteHeight * scaleFactor)))
 
-        # Draw the scaled sprite
         screen.blit(scaledSprite, (self.position.x - (self.spriteWidth * scaleFactor) // 2, 
                                     self.position.y - (spriteHeight * scaleFactor) // 2))
 
@@ -328,7 +297,6 @@ def random_position_avoiding_obstacles(obstacles):
             return (x, y)
 
 def can_spawn_agent(position, obstacles):
-    """Check if the position collides with any obstacles."""
     spawn_rect = pygame.Rect(position[0], position[1], 16, 16)  
     return not any(obstacle.colliderect(spawn_rect) for obstacle in obstacles)
 
@@ -348,30 +316,28 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            # Spawn 1 to 5 agents at the mouse click position
             x, y = event.pos
-            if can_spawn_agent((x, y), obstacles):  # Check if the spawn position is valid
-                num_agents_to_spawn = random.randint(1, 3)  # Randomly choose number of agents to spawn (1-5)
+            if can_spawn_agent((x, y), obstacles):  # can't spawn on obstacles collision
+                num_agents_to_spawn = random.randint(1, 3)  # spawn 1 to 5 agents at the mouse click position
                 for _ in range(num_agents_to_spawn):
                     if len(agents) < MAX_AGENT:
                         agents.append(Agent(x, y))
 
-     # Draw the map
-    scaled_map = pygame.transform.scale(map_image, (WIDTH * MAP_SCALE, HEIGHT * MAP_SCALE))
-    screen.blit(scaled_map, (0, 0))
+    scaled_map = pygame.transform.scale(mapImage, (WIDTH * MAP_SCALE, HEIGHT * MAP_SCALE))
+    screen.blit(scaled_map, (0, 0)) # draw the map
 
     #for obstacle in obstacles:
      #   pygame.draw.rect(screen, (255, 0, 0), obstacle)
 
     for agent in agents:
         agent.hungry(agents, humans)
-        agent.avoidObstacles(obstacles)  # Avoid obstacles
-        agent.update()  # Update agent position
-        agent.draw(screen)  # Draw agent
+        agent.avoidObstacles(obstacles) 
+        agent.update()  
+        agent.draw(screen)  
 
     for human in humans:
-        human.update(obstacles)  # Update human position
-        human.draw(screen)  # Draw human
+        human.update(obstacles)  
+        human.draw(screen)  
 
     pygame.display.flip()
     clock.tick(60)
