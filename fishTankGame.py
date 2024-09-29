@@ -34,8 +34,8 @@ obstacles = []
 
 for obj in tmxData.objects:
     if obj.name == "Obstacle":  
-        scaled_rect = pygame.Rect(obj.x * OBJECT_SCALE, obj.y * OBJECT_SCALE, obj.width * OBJECT_SCALE, obj.height * OBJECT_SCALE)
-        obstacles.append(scaled_rect)  # apply scaling to position and size
+        scaledRect = pygame.Rect(obj.x * OBJECT_SCALE, obj.y * OBJECT_SCALE, obj.width * OBJECT_SCALE, obj.height * OBJECT_SCALE)
+        obstacles.append(scaledRect)  # apply scaling to position and size
 
 class Agent:
     def __init__(self, x, y):
@@ -214,8 +214,6 @@ class Human(Agent):
             pygame.image.load('Assets/eldersspritesheet_3.png').convert_alpha(),
             pygame.image.load('Assets/eldersspritesheet_4.png').convert_alpha() ]
         
-       
-
         self.currentSheet = random.choice(self.spriteSheets)
         self.frameIndex = 0
         self.frameCount = 6  
@@ -223,7 +221,6 @@ class Human(Agent):
         self.spriteHeight = self.currentSheet.get_height()  
         self.animationSpeed = 0.1  
         self.animationTimer = 0.0
-
 
         self.MIN_SPEED = -1   
         self.MAX_SPEED = 5
@@ -276,7 +273,6 @@ class Human(Agent):
                 nearestDist = dist
         return nearestAgent
     
-
     def draw(self, screen):
         spriteHeight = self.currentSheet.get_height()  # Assuming all sprites have the same height
         frameRect = pygame.Rect(self.frameIndex * self.spriteWidth, 0, self.spriteWidth, spriteHeight)
@@ -287,18 +283,17 @@ class Human(Agent):
         screen.blit(scaledSprite, (self.position.x - (self.spriteWidth * scaleFactor) // 2, 
                                     self.position.y - (spriteHeight * scaleFactor) // 2))
 
-
 def spawnFromRandomPosition_noObstacles(obstacles):
     while True:
         x = random.randint(0, WIDTH)
         y = random.randint(0, HEIGHT)
-        new_human_rect = pygame.Rect(x, y, 16, 16) 
-        if not any(obstacle.colliderect(new_human_rect) for obstacle in obstacles):
+        newHumanRect = pygame.Rect(x, y, 16, 16) 
+        if not any(obstacle.colliderect(newHumanRect) for obstacle in obstacles):
             return (x, y)
 
 def canSpawnAgent(position, obstacles):
-    spawn_rect = pygame.Rect(position[0], position[1], 16, 16)  
-    return not any(obstacle.colliderect(spawn_rect) for obstacle in obstacles)
+    spawnRect = pygame.Rect(position[0], position[1], 16, 16)  
+    return not any(obstacle.colliderect(spawnRect) for obstacle in obstacles)
 
 # Initialize Pygame
 pygame.init()
