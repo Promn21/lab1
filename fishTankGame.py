@@ -180,8 +180,8 @@ class Agent:
                                                 (int(self.spriteWidth * scaleFactor), int(spriteHeight * scaleFactor)))
         
         #Hunger Ui
-        circle_color = "purple" if self.hunger > HUNGER_THRESHOLD else "yellow"
-        pygame.draw.circle(screen, circle_color, (int(self.position.x), int(self.position.y)), 20, width=2)
+        circleColor = "purple" if self.hunger > HUNGER_THRESHOLD else "yellow"
+        pygame.draw.circle(screen, circleColor, (int(self.position.x), int(self.position.y)), 20, width=2)
 
         screen.blit(scaledSprite, (self.position.x - (self.spriteWidth * scaleFactor) // 2, 
                                     self.position.y - (spriteHeight * scaleFactor) // 2))  
@@ -288,7 +288,7 @@ class Human(Agent):
                                     self.position.y - (spriteHeight * scaleFactor) // 2))
 
 
-def random_position_avoiding_obstacles(obstacles):
+def spawnFromRandomPosition_noObstacles(obstacles):
     while True:
         x = random.randint(0, WIDTH)
         y = random.randint(0, HEIGHT)
@@ -296,7 +296,7 @@ def random_position_avoiding_obstacles(obstacles):
         if not any(obstacle.colliderect(new_human_rect) for obstacle in obstacles):
             return (x, y)
 
-def can_spawn_agent(position, obstacles):
+def canSpawnAgent(position, obstacles):
     spawn_rect = pygame.Rect(position[0], position[1], 16, 16)  
     return not any(obstacle.colliderect(spawn_rect) for obstacle in obstacles)
 
@@ -306,7 +306,7 @@ clock = pygame.time.Clock()
 agents = []
 humans = []
 for _ in range(MAX_HUMAN):
-    x, y = random_position_avoiding_obstacles(obstacles)
+    x, y = spawnFromRandomPosition_noObstacles(obstacles)
     humans.append(Human(x, y))
 
 # Game loop
@@ -317,14 +317,14 @@ while running:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             x, y = event.pos
-            if can_spawn_agent((x, y), obstacles):  # can't spawn on obstacles collision
-                num_agents_to_spawn = random.randint(1, 3)  # spawn 1 to 5 agents at the mouse click position
-                for _ in range(num_agents_to_spawn):
+            if canSpawnAgent((x, y), obstacles):  # can't spawn on obstacles collision
+                numAgentToSpawn = random.randint(1, 3)  # spawn 1 to 5 agents at the mouse click position
+                for _ in range(numAgentToSpawn):
                     if len(agents) < MAX_AGENT:
                         agents.append(Agent(x, y))
 
-    scaled_map = pygame.transform.scale(mapImage, (WIDTH * MAP_SCALE, HEIGHT * MAP_SCALE))
-    screen.blit(scaled_map, (0, 0)) # draw the map
+    scaledMap = pygame.transform.scale(mapImage, (WIDTH * MAP_SCALE, HEIGHT * MAP_SCALE))
+    screen.blit(scaledMap, (0, 0)) # draw the map
 
     #for obstacle in obstacles:
      #   pygame.draw.rect(screen, (255, 0, 0), obstacle)
