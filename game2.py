@@ -1,215 +1,212 @@
 import pygame
 import random
+import enum
+import math
 
-# Set up the screen dimensions and maximum speed for agents
-WIDTH = 1280
-HEIGHT = 720
-MAX_SPEED = 5
-MAX_AGENT = 100  # Number of agents (fish) in the simulation
-FOOD_RADIUS = 50  # Radius within which fish will detect food
-HUNGER_THRESHOLD = 60  # Hunger level at which fish will seek food
-FOOD_DROP_INTERVAL = 30  # Interval for dropping food (frames)
+WIDTH, HEIGHT = 800, 600
+NUM_AGENTS = 5
+FOOD_SIZE = 5
+MAX_PATROL_SPEED = 1.5
+CHASE_SPEED = 3
+HUNGER_DECAY_RATE = 5  
+CHASE_DISTANCE = 150  
+ATTACK_DURATION = 0.5  # Duration of the attack animation in seconds
 
-# Factors controlling the behavior of the agents
-COHERENCE_FACTOR = 0.01  # Controls how strongly agents are attracted to the center of mass
-ALIGNMENT_FACTOR = 0.1  # Controls how strongly agents align their direction with others
-SEPARATION_FACTOR = 0.05  # Controls how strongly agents avoid each other
-SEPARATION_DIST = 25  # Minimum distance to maintain between agents
-ZONE_OF_WALL = 5  # Zone around the wall where agents will be repelled
-WALL_CONST = 2.0  # Force applied when agents are near the wall
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Raptor State Machine")
 
-# -----------------------------------------------------------------------
-# Agent class represents each moving entity in the simulation
-# -----------------------------------------------------------------------
+# Load and slice sprite sheets
+def load_sprite_sheet(path, frame_count, frame_width, frame_height=64):
+    sheet = pygame.image.load(path).convert_alpha()
+    return [sheet.subsurface(pygame.Rect(i * frame_width, 0, frame_width, frame_height)) for i in range(frame_count)]
+
+raptor_walk_anim = load_sprite_sheet('assets/raptor-walk.png', 6, 128)
+raptor_run_anim = load_sprite_sheet('assets/raptor-run.png', 6, 128)
+raptor_idle_anim = load_sprite_sheet('assets/raptor-scanning.png', 18, 128)
+raptor_atk_anim = load_sprite_sheet('assets/raptor-bite.png', 10, 128)
+raptor_dead_anim = load_sprite_sheet('assets/raptor-dead.png', 6, 128)
+
+FRAME_RATE = 30
+FONT = pygame.font.Font(None, 24)  # Font for displaying hunger level
+
+class AgentState(enum.Enum):
+    PATROL_STATE = 0
+    CHASE_STATE = 1
+    ATK_STATE = 2
+    IDLE_STATE = 3
+    DEAD_STATE = 4
 
 class Agent:
-    def __init__(self, x, y) -> None:
-        self.position = pygame.Vector2(x, y)
-        self.velocity = pygame.Vector2(
-            random.uniform(-MAX_SPEED, MAX_SPEED), random.uniform(-MAX_SPEED, MAX_SPEED))
-        self.acceleration = pygame.Vector2(0, 0)
-        self.mass = 1
-        self.hunger = random.randint(0, 60)  # Initialize hunger level randomly
-        self.hunger_decrement = 0.05  # Rate at which hunger increases over time
-        self.target_food = None  # To track the current food target
-        self.font = pygame.font.Font(None, 24)  # Font for rendering hunger text
+    def __init__(self):
+        self.hungriness = 100
+        self.position = pygame.Vector2(random.uniform(0, WIDTH), random.uniform(0, HEIGHT))
+        self.velocity = pygame.Vector2(0, 0)
+        self.frame_index = 0
+        self.current_state = AgentState.PATROL_STATE
+        self.current_anim = raptor_walk_anim
+        self.time_since_last_frame = 0
+        self.anim_completed = False  
 
-    def update(self, agents, foods):
-        # Increment hunger level over time
-        if self.hunger < 100:
-            self.hunger += self.hunger_decrement
-            self.hunger = min(100, self.hunger)  # Cap hunger at 100
+        # Patrol attributes
+        self.patrol_timer = 0  
+        self.patrol_duration = random.uniform(1.0, 2.0)  
+        self.set_random_patrol_direction()
 
-        if self.hunger > HUNGER_THRESHOLD and foods:
-            self.find_nearest_food(foods)
-            if self.target_food:
-                self.seek(self.target_food.position)
-                # Check if the agent is close enough to the food to eat it
-                if self.position.distance_to(self.target_food.position) < FOOD_RADIUS:
-                    self.eat_food(foods)
-                    self.target_food = None  # Clear the target food after eating
-            else:
-                # No food found, fallback to normal behavior
-                self.coherence(agents)
-                self.separation(agents)
-                self.alignment(agents)
-        else:
-            # Normal behavior when not hungry or no food available
-            self.coherence(agents)
-            self.separation(agents)
-            self.alignment(agents)
+    def set_random_patrol_direction(self):
+        angle = random.uniform(0, 360)
+        radians = math.radians(angle)
+        self.velocity = pygame.Vector2(MAX_PATROL_SPEED * math.cos(radians), MAX_PATROL_SPEED * math.sin(radians))
 
-        self.velocity += self.acceleration
-        if self.velocity.length() > MAX_SPEED:
-            self.velocity = self.velocity.normalize() * MAX_SPEED
-        self.position += self.velocity
-        self.acceleration = pygame.Vector2(0, 0)
+    def update_animation(self, dt):
+        if not self.anim_completed:
+            self.frame_index += FRAME_RATE * dt
+            if self.frame_index >= len(self.current_anim):
+                self.frame_index = 0
+                if self.current_state == AgentState.IDLE_STATE:
+                    self.anim_completed = True  
 
-        # Calculate and apply wall forces
-        wall_forces = self.calc_wall_forces(WIDTH, HEIGHT)
-        self.apply_force(wall_forces[0], wall_forces[1])
+    def change_state(self, new_state, new_anim):
+        if self.current_state != new_state:
+            self.current_state = new_state
+            self.current_anim = new_anim
+            self.frame_index = 0
+            self.anim_completed = False
 
-    def apply_force(self, x, y):
-        force = pygame.Vector2(x, y)
-        self.acceleration += force / self.mass
+            # Reset patrol timer when switching from PATROL_STATE
+            if new_state == AgentState.PATROL_STATE:
+                self.patrol_timer = 0
+                self.set_random_patrol_direction()  # Set new patrol direction
+            elif new_state == AgentState.ATK_STATE:
+                self.attack_timer = 0  # Reset attack timer when entering attack state
 
-    def seek(self, target_pos):
-        d = target_pos - self.position
-        d = d.normalize() * 0.1
-        seeking_force = d
-        self.apply_force(seeking_force.x, seeking_force.y)
+    def update(self, food_list, dt):
+        if self.hungriness <= 0:
+            self.change_state(AgentState.DEAD_STATE, raptor_dead_anim)
 
-    def find_nearest_food(self, foods):
+        if self.current_state != AgentState.DEAD_STATE:
+            self.hungriness -= HUNGER_DECAY_RATE * dt
+
+        # Initialize nearest_food variable
         nearest_food = None
-        nearest_distance = float('inf')
-        for food in foods:
-            distance = self.position.distance_to(food.position)
-            if distance < nearest_distance:
-                nearest_food = food
-                nearest_distance = distance
-        self.target_food = nearest_food
 
-    def eat_food(self, foods):
-        if self.hunger > HUNGER_THRESHOLD:
-            self.hunger = max(0, self.hunger - 100)  # Decrease hunger by 100 after eating food
-            # Remove the food from the list
-            foods[:] = [food for food in foods if food.position != self.target_food.position]
+        if self.current_state == AgentState.PATROL_STATE:
+            self.patrol_timer += dt
+            if self.patrol_timer >= self.patrol_duration:
+                self.change_state(AgentState.IDLE_STATE, raptor_idle_anim)
+            else:
+                self.position += self.velocity
+            
+            # Change to CHASE_STATE if food is present
+            nearest_food = min(food_list, key=lambda f: (f.position - self.position).length(), default=None)
+            if nearest_food and (nearest_food.position - self.position).length() < CHASE_DISTANCE:
+                self.change_state(AgentState.CHASE_STATE, raptor_run_anim)
 
-    def coherence(self, agents):
-        center_of_mass = pygame.Vector2(0, 0)
-        agent_in_range_count = 0
-        for agent in agents:
-            if agent != self:
-                dist = self.position.distance_to(agent.position)
-                if dist < 100:
-                    center_of_mass += agent.position
-                    agent_in_range_count += 1
+        elif self.current_state == AgentState.IDLE_STATE:
+            if self.anim_completed:
+                self.change_state(AgentState.PATROL_STATE, raptor_walk_anim)
+                self.set_random_patrol_direction()
 
-        if agent_in_range_count > 0:
-            center_of_mass /= agent_in_range_count
-            d = center_of_mass - self.position
-            f = d * COHERENCE_FACTOR
-            self.apply_force(f.x, f.y)
+            # Check for nearby food to transition to CHASE_STATE
+            nearest_food = min(food_list, key=lambda f: (f.position - self.position).length(), default=None)
+            if nearest_food and (nearest_food.position - self.position).length() < CHASE_DISTANCE:
+                self.change_state(AgentState.CHASE_STATE, raptor_run_anim)
 
-    def separation(self, agents):
-        d = pygame.Vector2(0, 0)
-        for agent in agents:
-            if agent != self:
-                dist = self.position.distance_to(agent.position)
-                if dist < SEPARATION_DIST:
-                    d += self.position - agent.position
+        elif self.current_state == AgentState.CHASE_STATE:
+            nearest_food = min(food_list, key=lambda f: (f.position - self.position).length(), default=None)
+            if nearest_food:
+                distance_to_food = (nearest_food.position - self.position).length()
+                if distance_to_food > CHASE_DISTANCE:
+                    self.change_state(AgentState.IDLE_STATE, raptor_idle_anim)
+                    return
 
-        separation_force = d * SEPARATION_FACTOR
-        self.apply_force(separation_force.x, separation_force.y)
+                self.velocity = (nearest_food.position - self.position).normalize() * CHASE_SPEED
+                self.position += self.velocity
 
-    def alignment(self, agents):
-        v = pygame.Vector2(0, 0)
-        agent_in_range_count = 0
-        for agent in agents:
-            if agent != self:
-                dist = self.position.distance_to(agent.position)
-                if dist < 100:
-                    v += agent.velocity
-                    agent_in_range_count += 1
+                if distance_to_food < FOOD_SIZE + 10:  # Agent reached the food
+                    self.change_state(AgentState.ATK_STATE, raptor_atk_anim)  # Transition to attack state
 
-        if agent_in_range_count > 0:
-            v /= agent_in_range_count
-            alignment_force = v * ALIGNMENT_FACTOR
-            self.apply_force(alignment_force.x, alignment_force.y)
+        elif self.current_state == AgentState.ATK_STATE:
+            self.attack_timer += dt  # Update attack timer
+            if self.attack_timer >= ATTACK_DURATION:  # Check if the attack animation has completed
+                if nearest_food:  # Check if nearest_food is not None
+                    food_list[:] = [food for food in food_list if food.position != nearest_food.position]
+
+        elif self.current_state == AgentState.DEAD_STATE:
+            if self.frame_index < len(self.current_anim) - 1:
+                self.update_animation(dt)
+            else:
+                self.frame_index = len(raptor_dead_anim) - 1  
+
+        self.update_animation(dt)
+        self.wrap_around_screen()
+
+    def wrap_around_screen(self):
+        if self.position.x > WIDTH:
+            self.position.x = 0
+        elif self.position.x < 0:
+            self.position.x = WIDTH
+        if self.position.y > HEIGHT:
+            self.position.y = 0
+        elif self.position.y < 0:
+            self.position.y = HEIGHT
+
+    def render_hunger(self, screen):
+        # Render the hunger level as text above the agent
+        hunger_text = FONT.render(f"Hunger: {int(self.hungriness)}", True, (255, 255, 255))
+        text_rect = hunger_text.get_rect(center=(self.position.x, self.position.y - 40))
+        screen.blit(hunger_text, text_rect)
 
     def draw(self, screen):
-        color = (255, 0, 0) if self.hunger > HUNGER_THRESHOLD else (0, 255, 0)
-        pygame.draw.circle(screen, color, self.position, 10)
-        # Render and display hunger level
-        #hunger_text = self.font.render(f"{self.hunger}", True, (255, 255, 255))
-        #screen.blit(hunger_text, (self.position.x - hunger_text.get_width() // 2, self.position.y - hunger_text.get_height() // 2))
+        current_frame = self.current_anim[int(self.frame_index) % len(self.current_anim)]
+        sprite_rect = current_frame.get_rect(center=(self.position.x, self.position.y))
+        
+        if self.velocity.x < 0:
+            current_frame = pygame.transform.flip(current_frame, True, False)
+        
+        screen.blit(current_frame, sprite_rect)
+        self.render_hunger(screen)  # Draw hunger level above the agent
 
-    def calc_wall_forces(self, width, height):
-        """Calculate the inward force of a wall, which is very short range. Either 0 or CONST."""
-        F_x, F_y = 0, 0
-        if self.position.x < ZONE_OF_WALL:
-            F_x += WALL_CONST
-        elif self.position.x > (width - ZONE_OF_WALL):
-            F_x -= WALL_CONST
-        if self.position.y < ZONE_OF_WALL:
-            F_y += WALL_CONST
-        elif self.position.y > (height - ZONE_OF_WALL):
-            F_y -= WALL_CONST
-        return F_x, F_y
-
-# -----------------------------------------------------------------------
-# Food class represents food items in the simulation
-# -----------------------------------------------------------------------
-
+# Food class
 class Food:
     def __init__(self, x, y):
         self.position = pygame.Vector2(x, y)
 
     def draw(self, screen):
-        pygame.draw.circle(screen, (0, 255, 255), self.position, 5)
+        # Draw the food as a circle
+        pygame.draw.circle(screen, (0, 255, 0), (int(self.position.x), int(self.position.y)), FOOD_SIZE)
 
-# -----------------------------------------------------------------------
-#  Begin
-# -----------------------------------------------------------------------
+# Main function
+def main():
+    agents = [Agent() for _ in range(NUM_AGENTS)]
+    food_list = []  # List to hold multiple food items
+    clock = pygame.time.Clock()
 
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-clock = pygame.time.Clock()
-font = pygame.font.Font(None, 36)
+    running = True
+    while running:
+        dt = clock.tick(60) / 1000.0
+        screen.fill((100, 100, 100))
 
-agents = [Agent(random.uniform(0, WIDTH), random.uniform(0, HEIGHT)) for _ in range(MAX_AGENT)]
-foods = []
-food_timer = 0
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:  # Check for mouse click
+                if event.button == 1:  # Left mouse button
+                    x, y = event.pos
+                    food_list.append(Food(x, y))  # Add food at mouse position
 
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            x, y = event.pos
-            foods.append(Food(x, y))
+        # Update and draw agents
+        for agent in agents:
+            agent.update(food_list, dt)
+            agent.draw(screen)
 
-    screen.fill((128, 128, 128))
+        # Draw all food items that are still in the food_list
+        for food in food_list:
+            food.draw(screen)
 
-    for agent in agents:
-        agent.update(agents, foods)
-        agent.draw(screen)
+        pygame.display.flip()
 
-    for food in foods:
-        food.draw(screen)
+    pygame.quit()
 
-    food_timer += 1
-    if food_timer >= FOOD_DROP_INTERVAL:
-        food_timer = 0
-
-    
-
-    fps = int(clock.get_fps())
-    fps_text = font.render(f"FPS: {fps}", True, pygame.Color('white'))
-    screen.blit(fps_text, (WIDTH - fps_text.get_width() - 10, 10))
-
-    pygame.display.flip()
-    clock.tick(60)
-
-pygame.quit()
+if __name__ == "__main__":
+    main()
